@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repeated Bargaining Game</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --panel:#ffffff;
+      --text:#1e293b;
+      --muted:#64748b;
+      --primary:#2563eb;
+      --primary-soft:#dbeafe;
+      --success:#16a34a;
+      --danger:#dc2626;
+      --border:#dfe7f5;
+      --shadow:0 8px 22px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body{
+      margin:0; font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    .container{
+      max-width: 980px; margin: 30px auto; padding: 0 18px 40px;
+    }
+    .card{
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    h1 { margin-top:0; font-size: 2rem; }
+    h2 { margin: 0 0 12px; font-size: 1.35rem; }
+    .row{
+      display:flex; gap: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .stack{
+      display:grid; gap: 12px;
+    }
+    label{
+      display:block; font-weight:700; margin-bottom:6px;
+    }
+    input, select, button{
+      font: inherit;
+    }
+    input, select{
+      width: 100%; max-width: 260px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: white;
+    }
+    button{
+      cursor:pointer; border:none; border-radius:10px;
+      padding: 10px 16px; font-weight:700;
+      transition: transform .08s ease, opacity .15s ease;
+    }
+    button:hover{ transform: translateY(-1px); }
+    button:active{ transform: translateY(0); }
+    .primary{ background: var(--primary); color: white; }
+    .secondary{ background:#e2e8f0; color:#0f172a; }
+    .success{ background: var(--success); color: white; }
+    .danger{ background: var(--danger); color: white; }
+    .muted{ color: var(--muted); }
+    .meta{
+      display:flex; gap:10px; flex-wrap: wrap; align-items:center;
+      margin: 12px 0 18px;
+    }
+    .pill{
+      background: var(--primary-soft); color: #1d4ed8;
+      border-radius: 999px; padding: 6px 10px; font-size: 0.86rem; font-weight: 700;
+    }
+    .stats{
+      display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+      gap:16px; margin: 20px 0;
+    }
+    .stat{
+      background: #f8fafc; border:1px solid var(--border);
+      border-radius:12px; padding: 14px 16px;
+    }
+    .stat strong{ display:block; font-size:1.3rem; margin-top:4px; }
+    .log{
+      margin-top:24px;
+      border:1px solid var(--border); border-radius:12px; padding:14px;
+      background:#fbfdff;
+    }
+    .log ul{
+      margin:0; padding-left: 18px;
+    }
+    .log li{ margin: 10px 0; }
+    .hidden { display:none !important; }
+    .offer-box{
+      background:#f8fafc; border:1px solid var(--border); border-radius:12px;
+      padding: 16px; margin-top: 14px;
+    }
+    .range-wrap{
+      display:flex; align-items:center; gap: 12px;
+      margin-top: 10px;
+    }
+    input[type="range"]{
+      width: 100%;
+      max-width: 420px;
+      padding: 0;
+      border:none;
+      background: transparent;
+    }
+    .value-readout{
+      font-size:1.2rem; font-weight:700; min-width: 120px; text-align:right;
+    }
+    .decision-buttons{
+      display:flex; gap:10px; flex-wrap: wrap; margin-top:18px;
+    }
+    table{
+      width:100%; border-collapse: collapse; margin-top:14px;
+      background:white; border:1px solid var(--border);
+      border-radius:12px; overflow:hidden;
+    }
+    th, td{
+      text-align:left; padding:10px 12px; border-bottom:1px solid var(--border);
+    }
+    th{ background:#f8fafc; }
+    .result{
+      font-size:1.2rem; font-weight:700; margin-top:8px;
+    }
+    .grid{
+      display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Repeated Bargaining Game</h1>
+
+      <div id="setup-screen">
+        <div class="grid">
+          <div>
+            <label for="teamName">Team name</label>
+            <input id="teamName" type="text" placeholder="e.g., Team A" />
+          </div>
+          <div>
+            <label for="role">Role</label>
+            <select id="role">
+              <option value="proposer">Proposer</option>
+              <option value="responder">Responder</option>
+            </select>
+          </div>
+        </div>
+        <div class="decision-buttons" style="margin-top:16px;">
+          <button class="primary" id="startGameBtn">Start game</button>
+          <button class="secondary" id="resetBtn">Reset local data</button>
+        </div>
+      </div>
+
+      <div id="game-screen" class="hidden">
+        <div class="meta">
+          <span class="pill" id="teamBadge">Team</span>
+          <span class="pill" id="roleBadge">Role</span>
+          <span class="pill" id="roundBadge">Round 1/5</span>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            Current pie
+            <strong id="currentPie">$0</strong>
+          </div>
+          <div class="stat">
+            Total earnings
+            <strong id="totalEarnings">$0</strong>
+          </div>
+          <div class="stat">
+            Agreement status
+            <strong id="agreementStatus">Pending</strong>
+          </div>
+        </div>
+
+        <div id="proposerPanel" class="hidden">
+          <h2>Proposer decision</h2>
+          <p class="muted">Choose how much of the current pie to offer to the responder.</p>
+          <div class="offer-box">
+            <div class="range-wrap">
+              <input id="offerRange" type="range" min="0" max="5000" step="50" value="2500" />
+              <div class="value-readout" id="offerValue">$2,500</div>
+            </div>
+            <div class="muted" style="margin-top:8px;">
+              Your payoff if accepted: <strong id="offerMyPayoff">$2,500</strong>
+            </div>
+            <div class="muted">
+              Responder payoff if accepted: <strong id="offerOtherPayoff">$2,500</strong>
+            </div>
+          </div>
+          <div class="decision-buttons">
+            <button class="primary" id="submitOfferBtn">Submit offer</button>
+          </div>
+        </div>
+
+        <div id="responderPanel" class="hidden">
+          <h2>Responder decision</h2>
+          <div class="offer-box">
+            <div class="result" id="proposalSummary">No proposal yet.</div>
+            <div class="muted" style="margin-top:8px;">
+              Your payoff if accepted: <strong id="responderPayoff">$0</strong>
+            </div>
+            <div class="muted">
+              Proposer payoff if accepted: <strong id="proposerPayoff">$0</strong>
+            </div>
+          </div>
+          <div class="decision-buttons">
+            <button class="success" id="acceptBtn">Accept</button>
+            <button class="danger" id="rejectBtn">Reject</button>
+          </div>
+        </div>
+
+        <div id="summaryPanel" class="hidden">
+          <h2>Round summary</h2>
+          <div class="result" id="roundSummaryText"></div>
+          <button class="primary" id="nextRoundBtn" style="margin-top:12px;">Next round</button>
+        </div>
+
+        <div class="log">
+          <h2>Game log</h2>
+          <ul id="gameLogList"></ul>
+        </div>
+
+        <div class="decision-buttons" style="margin-top:18px;">
+          <button class="secondary" id="downloadCsvBtn">Download CSV</button>
+          <button class="secondary" id="downloadJsonBtn">Download JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GAME_CONFIG = {
+      totalRounds: 5,
+      initialPie: 5000,
+      disagreementShrink: 0.9
+    };
+
+    const state = {
+      teamName: "",
+      role: "proposer",
+      currentRound: 1,
+      currentPie: GAME_CONFIG.initialPie,
+      totalEarnings: 0,
+      roundHistory: [],
+      activeProposal: null,
+      roundResolved: false
+    };
+
+    const els = {
+      setupScreen: document.getElementById('setup-screen'),
+      gameScreen: document.getElementById('game-screen'),
+      teamName: document.getElementById('teamName'),
+      role: document.getElementById('role'),
+      startGameBtn: document.getElementById('startGameBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      teamBadge: document.getElementById('teamBadge'),
+      roleBadge: document.getElementById('roleBadge'),
+      roundBadge: document.getElementById('roundBadge'),
+      currentPie: document.getElementById('currentPie'),
+      totalEarnings: document.getElementById('totalEarnings'),
+      agreementStatus: document.getElementById('agreementStatus'),
+      proposerPanel: document.getElementById('proposerPanel'),
+      responderPanel: document.getElementById('responderPanel'),
+      summaryPanel: document.getElementById('summaryPanel'),
+      offerRange: document.getElementById('offerRange'),
+      offerValue: document.getElementById('offerValue'),
+      offerMyPayoff: document.getElementById('offerMyPayoff'),
+      offerOtherPayoff: document.getElementById('offerOtherPayoff'),
+      proposalSummary: document.getElementById('proposalSummary'),
+      responderPayoff: document.getElementById('responderPayoff'),
+      proposerPayoff: document.getElementById('proposerPayoff'),
+      roundSummaryText: document.getElementById('roundSummaryText'),
+      gameLogList: document.getElementById('gameLogList'),
+      submitOfferBtn: document.getElementById('submitOfferBtn'),
+      acceptBtn: document.getElementById('acceptBtn'),
+      rejectBtn: document.getElementById('rejectBtn'),
+      nextRoundBtn: document.getElementById('nextRoundBtn'),
+      downloadCsvBtn: document.getElementById('downloadCsvBtn'),
+      downloadJsonBtn: document.getElementById('downloadJsonBtn')
+    };
+
+    function formatMoney(x) {
+      return '$' + Number(x).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
+    function updateOfferDisplay() {
+      const offer = Number(els.offerRange.value);
+      const proposerPayoff = state.currentPie - offer;
+      const responderPayoff = offer;
+      els.offerValue.textContent = formatMoney(offer);
+      els.offerMyPayoff.textContent = formatMoney(proposerPayoff);
+      els.offerOtherPayoff.textContent = formatMoney(responderPayoff);
+    }
+
+    function loadTeamState() {
+      const key = 'bargainingGameTeamState';
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function saveTeamState() {
+      const key = 'bargainingGameTeamState';
+      localStorage.setItem(key, JSON.stringify({
+        teamName: state.teamName,
+        role: state.role,
+        currentRound: state.currentRound,
+        currentPie: state.currentPie,
+        totalEarnings: state.totalEarnings,
+        roundHistory: state.roundHistory,
+        activeProposal: state.activeProposal,
+        roundResolved: state.roundResolved
+      }));
+    }
+
+    function clearTeamState() {
+      localStorage.removeItem('bargainingGameTeamState');
+      location.reload();
+    }
+
+    function renderHeader() {
+      els.teamBadge.textContent = state.teamName || 'Team';
+      els.roleBadge.textContent = state.role === 'proposer' ? 'Proposer' : 'Responder';
+      els.roundBadge.textContent = `Round ${state.currentRound}/${GAME_CONFIG.totalRounds}`;
+      els.currentPie.textContent = formatMoney(state.currentPie);
+      els.totalEarnings.textContent = formatMoney(state.totalEarnings);
+      els.agreementStatus.textContent = state.roundResolved ? 'Resolved' : 'Pending';
+    }
+
+    function renderLog() {
+      els.gameLogList.innerHTML = '';
+      const items = state.roundHistory.slice().reverse();
+      if (!items.length) {
+        const li = document.createElement('li');
+        li.textContent = 'No decisions yet.';
+        els.gameLogList.appendChild(li);
+        return;
+      }
+      items.forEach(entry => {
+        const li = document.createElement('li');
+        const suffix = entry.outcome === 'agreement' ? 'Agreement reached.' : 'No agreement: pie shrank.';
+        li.textContent = `Round ${entry.round}: ${entry.role} • ${entry.action} • ${suffix}`;
+        els.gameLogList.appendChild(li);
+      });
+    }
+
+    function updatePanels() {
+      const isProposer = state.role === 'proposer';
+      els.proposerPanel.classList.toggle('hidden', !isProposer || state.roundResolved);
+      els.responderPanel.classList.toggle('hidden', isProposer || state.roundResolved);
+      els.summaryPanel.classList.toggle('hidden', !state.roundResolved);
+
+      if (isProposer && !state.roundResolved) {
+        const maxVal = Math.max(0, Math.round(state.currentPie));
+        els.offerRange.max = String(maxVal);
+        els.offerRange.value = String(Math.min(Number(els.offerRange.value), maxVal, 5000));
+        updateOfferDisplay();
+      }
+
+      if (!isProposer && state.activeProposal && !state.roundResolved) {
+        const offer = state.activeProposal.offer;
+        const proposerPayoff = state.currentPie - offer;
+        const responderPayoff = offer;
+        els.proposalSummary.textContent =
+          `Offer received: ${formatMoney(offer)} to responder, ${formatMoney(proposerPayoff)} to proposer.`;
+        els.responderPayoff.textContent = formatMoney(responderPayoff);
+        els.proposerPayoff.textContent = formatMoney(proposerPayoff);
+      }
+    }
+
+    function nextRoundIfNeeded() {
+      if (state.currentRound >= GAME_CONFIG.totalRounds) {
+        const summary = [
+          `Game complete. Final total earnings: ${formatMoney(state.totalEarnings)}.`,
+          `Total rounds played: ${state.roundHistory.length}.`
+        ].join(' ');
+        els.roundSummaryText.textContent = summary;
+        els.roundSummaryText.style.color = '#0f172a';
+        state.roundResolved = true;
+        saveTeamState();
+        renderHeader();
+        renderLog();
+        updatePanels();
+        return;
+      }
+
+      state.currentRound += 1;
+      state.currentPie = state.currentPie * GAME_CONFIG.disagreementShrink;
+      state.roundResolved = false;
+      state.activeProposal = null;
+      saveTeamState();
+      renderHeader();
+      updatePanels();
+      renderLog();
+    }
+
+    function submitOffer() {
+      if (state.roundResolved) return;
+
+      const offer = Number(els.offerRange.value);
+      const proposerPayoff = state.currentPie - offer;
+
+      state.activeProposal = {
+        round: state.currentRound,
+        role: state.role,
+        offer,
+        proposerPayoff,
+        responderPayoff: offer
+      };
+
+      state.roundResolved = true;
+      state.roundHistory.push({
+        round: state.currentRound,
+        role: state.role,
+        action: `Offer: ${formatMoney(offer)}`,
+        outcome: 'proposal-sent'
+      });
+
+      saveTeamState();
+      renderHeader();
+      renderLog();
+      updatePanels();
+
+      els.roundSummaryText.textContent = `Offer submitted: ${formatMoney(offer)} to responder, leaving ${formatMoney(proposerPayoff)} for proposer. Waiting for responder decision.`;
+      els.roundSummaryText.style.color = '#0f172a';
+    }
+
+    function resolveRound(isAccepted) {
+      if (!state.activeProposal) return;
+
+      const offer = state.activeProposal.offer;
+      const proposerPayoff = state.currentPie - offer;
+      const responderPayoff = offer;
+
+      if (isAccepted) {
+        state.totalEarnings += proposerPayoff; // for proposer role only
+        if (state.role === 'responder') {
+          state.totalEarnings += responderPayoff;
+        }
+        state.roundHistory.push({
+          round: state.currentRound,
+          role: state.role,
+          action: isAccepted ? 'Accepted proposal' : 'Rejected proposal',
+          outcome: 'agreement',
+          offer,
+          payout: state.role === 'proposer' ? proposerPayoff : responderPayoff
+        });
+        els.roundSummaryText.textContent =
+          isAccepted
+            ? `Agreement reached. Proposer receives ${formatMoney(proposerPayoff)} and responder receives ${formatMoney(responderPayoff)}.`
+            : `No agreement. Pie shrinks by 10%.`;
+      } else {
+        state.roundHistory.push({
+          round: state.currentRound,
+          role: state.role,
+          action: 'Rejected proposal',
+          outcome: 'disagreement',
+          offer
+        });
+        state.currentPie = state.currentPie * GAME_CONFIG.disagreementShrink;
+        els.roundSummaryText.textContent =
+          `No agreement. The pie shrinks by 10% to ${formatMoney(state.currentPie)} for the next round.`;
+      }
+
+      state.roundResolved = true;
+      saveTeamState();
+      renderHeader();
+      renderLog();
+
+      if (isAccepted) {
+        if (state.currentRound >= GAME_CONFIG.totalRounds) {
+          els.roundSummaryText.textContent =
+            `Game complete. Final total earnings: ${formatMoney(state.totalEarnings)}.`;
+          renderHeader();
+        } else {
+          const btn = document.getElementById('nextRoundBtn');
+          btn.textContent = 'Next round';
+          els.summaryPanel.classList.remove('hidden');
+        }
+      } else {
+        // disagreement means move to next round after summary
+        const btn = document.getElementById('nextRoundBtn');
+        btn.textContent = 'Next round';
+      }
+
+      updatePanels();
+    }
+
+    function handleAccept() {
+      const isAccepted = true;
+      resolveRound(isAccepted);
+      // keep roundResolved true; nextRoundBtn will move to next round
+    }
+
+    function handleReject() {
+      const isAccepted = false;
+      resolveRound(isAccepted);
+    }
+
+    function startGame() {
+      const teamName = els.teamName.value.trim();
+      const role = els.role.value;
+
+      if (!teamName) {
+        alert('Please enter a team name before starting.');
+        return;
+      }
+
+      Object.assign(state, {
+        teamName,
+        role,
+        currentRound: 1,
+        currentPie: GAME_CONFIG.initialPie,
+        totalEarnings: 0,
+        roundHistory: [],
+        activeProposal: null,
+        roundResolved: false
+      });
+
+      saveTeamState();
+      els.setupScreen.classList.add('hidden');
+      els.gameScreen.classList.remove('hidden');
+      renderHeader();
+      updatePanels();
+      renderLog();
+    }
+
+    function processNextRound() {
+      if (state.currentRound >= GAME_CONFIG.totalRounds) {
+        saveTeamState();
+        renderHeader();
+        updatePanels();
+        return;
+      }
+
+      state.currentRound += 1;
+      state.currentPie = state.currentPie * GAME_CONFIG.disagreementShrink;
+      state.roundResolved = false;
+      state.activeProposal = null;
+
+      saveTeamState();
+      renderHeader();
+      updatePanels();
+      renderLog();
+    }
+
+    function downloadFile(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportCSV() {
+      const rows = [
+        ['team_name', 'role', 'round', 'current_pie', 'offer', 'responder_payoff', 'proposer_payoff', 'outcome', 'notes', 'total_earnings']
+      ];
+
+      state.roundHistory.forEach(entry => {
+        rows.push([
+          state.teamName,
+          state.role,
+          String(entry.round || ''),
+          String(state.currentPie || ''),
+          entry.offer !== undefined ? String(entry.offer) : '',
+          entry.responderPayoff !== undefined ? String(entry.responderPayoff) : '',
+          entry.proposerPayoff !== undefined ? String(entry.proposerPayoff) : '',
+          entry.outcome || '',
+          entry.action || '',
+          String(state.totalEarnings || '')
+        ]);
+      });
+
+      downloadFile(`${state.teamName || 'bargaining-game'}-results.csv`, rows.map(r => r.join(',')).join('\n'), 'text/csv;charset=utf-8;');
+    }
+
+    function exportJSON() {
+      downloadFile(`${state.teamName || 'bargaining-game'}-results.json`, JSON.stringify({
+        teamName: state.teamName,
+        role: state.role,
+        totalRounds: GAME_CONFIG.totalRounds,
+        initialPie: GAME_CONFIG.initialPie,
+        disagreementShrink: GAME_CONFIG.disagreementShrink,
+        totalEarnings: state.totalEarnings,
+        history: state.roundHistory
+      }, null, 2), 'application/json;charset=utf-8;');
+    }
+
+    function init() {
+      const saved = loadTeamState();
+      if (saved) {
+        Object.assign(state, saved);
+        els.setupScreen.classList.add('hidden');
+        els.gameScreen.classList.remove('hidden');
+        renderHeader();
+        updatePanels();
+        renderLog();
+      }
+
+      els.offerRange.addEventListener('input', updateOfferDisplay);
+
+      els.startGameBtn.addEventListener('click', startGame);
+      els.resetBtn.addEventListener('click', clearTeamState);
+
+      els.submitOfferBtn.addEventListener('click', submitOffer);
+      els.acceptBtn.addEventListener('click', handleAccept);
+      els.rejectBtn.addEventListener('click', handleReject);
+      els.nextRoundBtn.addEventListener('click', function () {
+        if (state.roundResolved) {
+          processNextRound();
+        }
+      });
+
+      els.downloadCsvBtn.addEventListener('click', exportCSV);
+      els.downloadJsonBtn.addEventListener('click', exportJSON);
+    }
+
+    init();
+  </script>
+</body>
+</html>
